@@ -1,3 +1,6 @@
+# Data Model
+
+```mermaid
 erDiagram
     %% ─── RAW / BRONZE TABLES ───────────────────────────────────────────────────
 
@@ -184,3 +187,4 @@ erDiagram
     full_data_silver_plus ||--|| UFC_features             : "fight_url (feature eng.)"
     UFC_features          ||--o{ predictions              : "fight_url (upcoming)"
     UFC_model_prediction_input ||--o{ predictions         : "fight_url (fallback)"
+```
