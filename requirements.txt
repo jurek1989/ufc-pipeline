@@ -25,3 +25,9 @@ kaggle>=1.7.4                   # CLI + Python API: kaggle datasets version/crea
 xgboost>=2.1.0                  # XGBClassifier, native NaN handling, hist tree method
 scikit-learn>=1.6.0             # OrdinalEncoder, CalibratedClassifierCV, metrics
 joblib>=1.4.0                   # model serialization (joblib.dump/load)
+
+# Research agent (agents/research_agent.py):
+langgraph>=1.2.0                # StateGraph, conditional edges, state accumulation
+langchain-anthropic>=1.4.0      # ChatAnthropic wrapper for Claude
+langchain-community>=0.4.0      # TavilySearchResults, DuckDuckGoSearchAPIWrapper
+tavily-python>=0.5.0            # Tavily web search client (1 000 free calls/month)
