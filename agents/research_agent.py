@@ -34,6 +34,9 @@ from typing_extensions import TypedDict
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+# Ensure the project root (parent of agents/) is on sys.path so config.py is importable
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent))
+
 from config import DATASET, PROJECT_ID, TABLE_COMING_EVENT  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
