@@ -1,4 +1,3 @@
-import os
 import re
 import sys
 import logging
@@ -7,13 +6,11 @@ from datetime import datetime, timezone
 import pandas as pd
 from bs4 import BeautifulSoup
 from google.cloud import bigquery
-from playwright.sync_api import sync_playwright
 
 from config import PROJECT_ID, DATASET, TABLE_ODDS_SNAPSHOTS
+from utils.playwright_fetch import open_browser_page
 
 logging.basicConfig(level=logging.INFO)
-
-os.environ.setdefault("PLAYWRIGHT_HOST_PLATFORM_OVERRIDE", "ubuntu22.04-x64")
 
 BFO_BASE = "https://www.bestfightodds.com"
 TABLE_REF = f"{PROJECT_ID}.{DATASET}.{TABLE_ODDS_SNAPSHOTS}"
@@ -22,7 +19,7 @@ SKIP_BOOKMAKERS = {"Props", "Future Events"}
 client = bigquery.Client(project=PROJECT_ID)
 
 
-def fetch_page(url: str, page) -> str:
+def _nav(url: str, page) -> str:
     page.goto(url, timeout=30000)
     return page.content()
 
@@ -115,35 +112,18 @@ def parse_event_odds(html: str) -> list[dict]:
 
 
 def main():
-    lib_path = os.environ.get(
-        "LD_LIBRARY_PATH",
-        "/tmp/chromium_libs/usr/lib/x86_64-linux-gnu",
-    )
-    if lib_path:
-        current = os.environ.get("LD_LIBRARY_PATH", "")
-        if lib_path not in current:
-            os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{current}".rstrip(":")
-
     scraped_at = datetime.now(timezone.utc)
     all_rows = []
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(
-            user_agent=(
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                "Chrome/120.0.0.0 Safari/537.36"
-            )
-        )
-
+    with open_browser_page() as page:
         logging.info("Fetching BFO event list...")
-        home_html = fetch_page(BFO_BASE, page)
+        home_html = _nav(BFO_BASE, page)
         events = parse_events(home_html)
         logging.info(f"Found {len(events)} upcoming events: {[e['name'] for e in events]}")
 
         for event in events:
             logging.info(f"Scraping: {event['name']} ({event['url']})")
-            event_html = fetch_page(event["url"], page)
+            event_html = _nav(event["url"], page)
             rows = parse_event_odds(event_html)
             logging.info(f"  → {len(rows)} bookmaker rows")
             for row in rows:
@@ -158,8 +138,6 @@ def main():
                     "odds_f2_american": row["odds_f2_american"],
                     "scraped_at":       scraped_at,
                 })
-
-        browser.close()
 
     if not all_rows:
         logging.info("No odds data scraped.")

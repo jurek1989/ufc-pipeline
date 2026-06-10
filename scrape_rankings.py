@@ -1,6 +1,5 @@
 import sys
 import logging
-import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -8,6 +7,7 @@ from google.cloud import bigquery
 from unidecode import unidecode
 
 from config import PROJECT_ID, DATASET, TABLE_RANKINGS
+from utils.playwright_fetch import fetch_page
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,14 +18,7 @@ client = bigquery.Client(project=PROJECT_ID)
 def main():
     logging.info("Rozpoczęto scrapowanie rankingów UFC.")
 
-    try:
-        response = requests.get("https://www.ufc.com/rankings")
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Błąd podczas pobierania strony: {e}")
-        sys.exit(1)
-
-    soup = BeautifulSoup(response.content, "html.parser")
+    soup = BeautifulSoup(fetch_page("https://www.ufc.com/rankings"), "html.parser")
     ranking_date = datetime.now().strftime("%Y-%m-%d")
     rankings_data = []
 

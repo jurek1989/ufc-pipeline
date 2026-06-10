@@ -1,12 +1,12 @@
 import sys
 import logging
-import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from google.cloud import bigquery
 import pandas as pd
 
 from config import PROJECT_ID, DATASET, TABLE_COMING_EVENT
+from utils.playwright_fetch import fetch_page
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,9 +16,7 @@ client = bigquery.Client(project=PROJECT_ID)
 
 def get_latest_event():
     try:
-        response = requests.get('http://ufcstats.com/statistics/events/completed?page=all')
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(fetch_page('http://ufcstats.com/statistics/events/completed?page=all'), 'html.parser')
         event_link = soup.select_one('i.b-statistics__table-content a.b-link[href*="event-details"]')
         if not event_link:
             return None
@@ -30,9 +28,7 @@ def get_latest_event():
 
 def get_event_details(event_url):
     try:
-        response = requests.get(event_url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(fetch_page(event_url), 'html.parser')
 
         event_name = soup.find('h2', class_='b-content__title').get_text(strip=True)
 

@@ -3,11 +3,11 @@ import sys
 from google.cloud import bigquery
 from datetime import datetime
 import pandas as pd
-import requests
 from bs4 import BeautifulSoup
 import logging
 
 from config import PROJECT_ID, DATASET, TABLE_EVENTS_URLS
+from utils.playwright_fetch import fetch_page
 
 logging.basicConfig(level=logging.INFO)
 client = bigquery.Client(project=PROJECT_ID)
@@ -23,12 +23,7 @@ def main():
             sys.exit(1)
 
     url = "http://ufcstats.com/statistics/events/completed?page=all"
-    res = requests.get(url)
-    if res.status_code != 200:
-        logging.error(f"Błąd pobierania strony UFCStats: {res.status_code}")
-        sys.exit(1)
-
-    soup = BeautifulSoup(res.text, "html.parser")
+    soup = BeautifulSoup(fetch_page(url), "html.parser")
     rows = [
         row for row in soup.select("tr.b-statistics__table-row")
         if row.select_one("a") and row.select_one("span")

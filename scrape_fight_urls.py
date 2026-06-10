@@ -2,10 +2,10 @@ import sys
 import logging
 from google.cloud import bigquery
 import pandas as pd
-import requests
 from bs4 import BeautifulSoup
 
 from config import PROJECT_ID, DATASET, TABLE_EVENTS_URLS, TABLE_FIGHTS_URLS
+from utils.playwright_fetch import fetch_page
 
 logging.basicConfig(level=logging.INFO)
 client = bigquery.Client(project=PROJECT_ID)
@@ -36,11 +36,7 @@ def main():
     for _, row in missing_df.iterrows():
         event_url = row["event_url"]
         try:
-            res = requests.get(event_url)
-            if res.status_code != 200:
-                logging.warning(f"Błąd pobierania: {event_url}")
-                continue
-            soup = BeautifulSoup(res.text, "html.parser")
+            soup = BeautifulSoup(fetch_page(event_url), "html.parser")
             for tr in soup.select("tr.b-fight-details__table-row"):
                 cols = tr.find_all("td")
                 if len(cols) < 2:

@@ -2,11 +2,11 @@ import sys
 import logging
 from google.cloud import bigquery
 import pandas as pd
-import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 
 from config import PROJECT_ID, DATASET, TABLE_EVENTS_URLS, TABLE_EVENTS_DATA
+from utils.playwright_fetch import fetch_page
 
 logging.basicConfig(level=logging.INFO)
 client = bigquery.Client(project=PROJECT_ID)
@@ -28,9 +28,7 @@ def main():
     rows = []
     for url in df["event_url"]:
         try:
-            res = requests.get(url)
-            res.raise_for_status()
-            soup = BeautifulSoup(res.text, "html.parser")
+            soup = BeautifulSoup(fetch_page(url), "html.parser")
 
             event_name = soup.find("h2", class_="b-content__title").text.strip()
             details_box = soup.find("div", class_="b-list__info-box")

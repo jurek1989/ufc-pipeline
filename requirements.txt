@@ -6,7 +6,7 @@
 # Scrapery (Cloud Run Jobs):
 google-cloud-bigquery>=3.41.0   # BigQuery client; load_table_from_dataframe, MERGE
 db-dtypes>=1.7.0                # wymagane przez bigquery.to_dataframe()
-requests>=2.34.2                # HTTP scraping (ufcstats.com, ufc.com, odds API)
+requests>=2.34.2                # HTTP client (api-odds-scraper.py — REST API calls)
 beautifulsoup4>=4.14.3          # HTML parsing
 pandas>=3.0.3                   # DataFrame I/O, transformacje
 pytz>=2026.2                    # timezone-aware timestamps (scrape_fighter_urls)

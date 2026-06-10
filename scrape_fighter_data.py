@@ -1,14 +1,11 @@
-import sys
 import logging
-import requests
 import bs4
 import pandas as pd
 from google.cloud import bigquery
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import pytz
 
 from config import PROJECT_ID, DATASET, TABLE_FIGHTERS_URLS, TABLE_FIGHTERS_DATA
+from utils.playwright_fetch import fetch_pages
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,7 +19,7 @@ def parse_l_name(name):
         return 'NULL'
     if len(name) == 2:
         return name[-1]
-    return ' '.join(name[1:])  # fix: was name[-(len-1):-0] which always returned ''
+    return ' '.join(name[1:])
 
 
 def parse_nickname(n):
@@ -49,10 +46,9 @@ def parse_dob(d):
     return None if d == '--' else datetime.strptime(d, '%b %d, %Y').strftime('%Y-%m-%d')
 
 
-def scrape_fighter_from_url(url):
+def scrape_fighter_from_html(html: str, url: str) -> dict | None:
     try:
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-        soup = bs4.BeautifulSoup(res.text, "html.parser")
+        soup = bs4.BeautifulSoup(html, "html.parser")
 
         name = soup.select_one('span')
         if not name:
@@ -135,11 +131,13 @@ def main():
         logging.info("Brak nowych zawodników.")
         return
 
+    html_map = fetch_pages(urls, max_workers=10)
+
     fighters = []
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(scrape_fighter_from_url, url) for url in urls]
-        for future in as_completed(futures):
-            result = future.result()
+    for url in urls:
+        html = html_map.get(url)
+        if html:
+            result = scrape_fighter_from_html(html, url)
             if result:
                 fighters.append(result)
 

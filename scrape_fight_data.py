@@ -1,12 +1,12 @@
 import sys
 import logging
-import requests
 import bs4
 import pandas as pd
 from google.cloud import bigquery
 import re
 
 from config import PROJECT_ID, DATASET, TABLE_FIGHTS_DATA, TABLE_FIGHTS_URLS
+from utils.playwright_fetch import fetch_page
 
 logging.basicConfig(level=logging.INFO)
 client = bigquery.Client(project=PROJECT_ID)
@@ -83,9 +83,7 @@ def main():
     for url in df_urls["url"]:
         logging.info(f"Przetwarzanie: {url}")
         try:
-            page = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-            page.raise_for_status()
-            soup = bs4.BeautifulSoup(page.text, "html.parser")
+            soup = bs4.BeautifulSoup(fetch_page(url), "html.parser")
 
             fighters = soup.select("div.b-fight-details__person")
             if len(fighters) != 2:
