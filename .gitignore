@@ -1,0 +1,7 @@
+models/*.joblib
+*.pyc
+__pycache__/
+.env
+*.json
+.kaggle/
+*.deb

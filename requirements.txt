@@ -1,0 +1,27 @@
+# UFC Pipeline — zależności Python
+#
+# Instalacja:
+#   pip install -r requirements.txt
+#
+# Scrapery (Cloud Run Jobs):
+google-cloud-bigquery>=3.41.0   # BigQuery client; load_table_from_dataframe, MERGE
+db-dtypes>=1.7.0                # wymagane przez bigquery.to_dataframe()
+requests>=2.34.2                # HTTP scraping (ufcstats.com, ufc.com, odds API)
+beautifulsoup4>=4.14.3          # HTML parsing
+pandas>=3.0.3                   # DataFrame I/O, transformacje
+pytz>=2026.2                    # timezone-aware timestamps (scrape_fighter_urls)
+unidecode>=1.3.8                # ASCII normalizacja nazw zawodników (scrape_rankings)
+playwright>=1.50.0              # headless Chromium do scrapowania BFO (bestfightodds.com)
+
+# Feature engineering (build_features.py, process_model_stats.py):
+numpy>=2.4.6                    # rolling aggregates, np.divide
+tqdm>=4.0.0                     # progress bars w process_upcoming_stats
+pyarrow>=20.0.0                 # parquet serialization (to_parquet przed wysyłką do Kaggle)
+
+# Kaggle publish (publish_to_kaggle.py):
+kaggle>=1.7.4                   # CLI + Python API: kaggle datasets version/create
+
+# Model training (train_model.py):
+xgboost>=2.1.0                  # XGBClassifier, native NaN handling, hist tree method
+scikit-learn>=1.6.0             # OrdinalEncoder, CalibratedClassifierCV, metrics
+joblib>=1.4.0                   # model serialization (joblib.dump/load)

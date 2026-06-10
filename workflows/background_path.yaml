@@ -1,0 +1,134 @@
+# Cloud Workflow: background_path  (§4.2)
+#
+# Kadencja tła — co tydzień, niezależnie od kalendarza gal.
+# Uruchamia równolegle:
+#   • scrape-rankings
+#   • scrape-fighter-urls  →  scrape-fighter-data  (sekwencyjnie — data czeka na URL-e)
+#
+# Deployment (przykład):
+#   gcloud workflows deploy background-path \
+#     --source=workflows/background_path.yaml \
+#     --location=europe-west4 \
+#     --service-account=SA@PROJECT.iam.gserviceaccount.com
+#
+# Scheduler (przykład, poniedziałek 06:00 UTC):
+#   gcloud scheduler jobs create http background-path-trigger \
+#     --schedule="0 6 * * 1" \
+#     --uri="https://workflowexecutions.googleapis.com/v1/projects/PROJECT/locations/europe-west4/workflows/background-path/executions" \
+#     --message-body="{}" \
+#     --oauth-service-account-email=SA@PROJECT.iam.gserviceaccount.com
+
+main:
+  steps:
+    - init:
+        assign:
+          - project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+          - region: "europe-west4"
+
+    - parallel_background:
+        parallel:
+          branches:
+
+            # Rankingi — niezależne od zawodników, można równolegle
+            - rankings_branch:
+                steps:
+                  - run_rankings:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "scrape-rankings"
+
+            # Zawodnicy — URL-e muszą skończyć zanim zaczniemy profile
+            - fighters_branch:
+                steps:
+                  - run_fighter_urls:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "scrape-fighter-urls"
+                  - run_fighter_data:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "scrape-fighter-data"
+
+
+# ---------------------------------------------------------------------------
+# Subworkflow: run_job
+# Uruchamia Cloud Run Job i blokuje aż do zakończenia (polling LRO v2).
+# Retry z backoffem na wywołaniach HTTP (§12).
+# ---------------------------------------------------------------------------
+run_job:
+  params: [project_id, region, job]
+  steps:
+    - log_start:
+        call: sys.log
+        args:
+          text: ${"[background_path] starting job: " + job}
+          severity: INFO
+
+    - start_execution:
+        try:
+          call: http.post
+          args:
+            url: ${"https://run.googleapis.com/v2/projects/" + project_id
+                   + "/locations/" + region + "/jobs/" + job + ":run"}
+            auth:
+              type: OAuth2
+          result: response
+        retry:
+          predicate: ${http.default_retry_predicate}
+          max_retries: 3
+          backoff:
+            initial_delay: 10
+            max_delay: 120
+            multiplier: 2
+
+    - save_op:
+        assign:
+          - op_name: ${response.body.name}
+
+    # Polling loop — sprawdzamy co 30 s aż do zakończenia operacji
+    - wait:
+        call: sys.sleep
+        args:
+          seconds: 30
+
+    - poll_operation:
+        try:
+          call: http.get
+          args:
+            url: ${"https://run.googleapis.com/v2/" + op_name}
+            auth:
+              type: OAuth2
+          result: op
+        retry:
+          predicate: ${http.default_retry_predicate}
+          max_retries: 5
+          backoff:
+            initial_delay: 10
+            max_delay: 60
+            multiplier: 2
+
+    - check_done:
+        switch:
+          - condition: ${op.body.done == true}
+            next: check_error
+        next: wait   # operacja nadal trwa — czekaj dalej
+
+    - check_error:
+        switch:
+          - condition: ${"error" in op.body}
+            raise: ${op.body.error}
+
+    - log_done:
+        call: sys.log
+        args:
+          text: ${"[background_path] completed job: " + job}
+          severity: INFO
+
+    - done:
+        return: ${op.body}

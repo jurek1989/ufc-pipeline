@@ -1,0 +1,205 @@
+# Cloud Workflow: event_path  (§4.1)
+#
+# Kadencja galowa — dzień po gali UFC (co tydzień).
+#
+# Gałąź A (zakończona gala — dane treningowe/archiwum):
+#   scrape-event-urls → scrape-event-data → scrape-fight-urls
+#   → scrape-fight-data ∥ scrape-fight-stats  (równolegle)
+#
+# Gałąź B (nadchodząca karta — wejście do predykcji):
+#   scrape-upcoming-event → jit-fighter-check  (sekwencyjnie)
+#   scrape-odds                                (równolegle z A i resztą B)
+#
+# Zbieg wszystkich gałęzi:
+#   build-features → publish-to-kaggle
+#
+# Deployment (przykład):
+#   gcloud workflows deploy event-path \
+#     --source=workflows/event_path.yaml \
+#     --location=europe-west4 \
+#     --service-account=SA@PROJECT.iam.gserviceaccount.com
+#
+# Scheduler (przykład, wtorek 10:00 UTC — dzień po typowej sobotnio-niedzielnej gali):
+#   gcloud scheduler jobs create http event-path-trigger \
+#     --schedule="0 10 * * 2" \
+#     --uri="https://workflowexecutions.googleapis.com/v1/projects/PROJECT/locations/europe-west4/workflows/event-path/executions" \
+#     --message-body="{}" \
+#     --oauth-service-account-email=SA@PROJECT.iam.gserviceaccount.com
+
+main:
+  steps:
+    - init:
+        assign:
+          - project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+          - region: "europe-west4"
+
+    # -----------------------------------------------------------------------
+    # Faza 1: trzy równoległe gałęzie
+    # -----------------------------------------------------------------------
+    - parallel_event:
+        parallel:
+          branches:
+
+            # --- Gałąź A: zakończona gala -----------------------------------
+            - branch_a:
+                steps:
+                  - run_event_urls:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "scrape-event-urls"
+                  - run_event_data:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "scrape-event-data"
+                  - run_fight_urls:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "scrape-fight-urls"
+                  # scrape-fight-data i scrape-fight-stats są niezależne — równolegle
+                  - parallel_fight_scraping:
+                      parallel:
+                        branches:
+                          - fight_data_branch:
+                              steps:
+                                - run_fight_data:
+                                    call: run_job
+                                    args:
+                                      project_id: ${project_id}
+                                      region: ${region}
+                                      job: "scrape-fight-data"
+                          - fight_stats_branch:
+                              steps:
+                                - run_fight_stats:
+                                    call: run_job
+                                    args:
+                                      project_id: ${project_id}
+                                      region: ${region}
+                                      job: "scrape-fight-stats"
+
+            # --- Gałąź B: nadchodząca karta (sekwencja upcoming → JIT) ------
+            - branch_b_upcoming:
+                steps:
+                  - run_upcoming_event:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "scrape-upcoming-event"
+                  # JIT: scrape tylko zawodników z karty, których brak w UFC_fighters_data
+                  - run_jit_fighter_check:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "jit-fighter-check"
+
+            # --- Gałąź B: kursy (niezależne od obu powyższych) --------------
+            - branch_b_odds:
+                steps:
+                  - run_odds:
+                      call: run_job
+                      args:
+                        project_id: ${project_id}
+                        region: ${region}
+                        job: "scrape-odds"
+
+    # -----------------------------------------------------------------------
+    # Faza 2: zbieg wszystkich gałęzi → cechy → Kaggle
+    # -----------------------------------------------------------------------
+    - run_build_features:
+        call: run_job
+        args:
+          project_id: ${project_id}
+          region: ${region}
+          job: "build-features"
+
+    - run_publish_to_kaggle:
+        call: run_job
+        args:
+          project_id: ${project_id}
+          region: ${region}
+          job: "publish-to-kaggle"
+
+
+# ---------------------------------------------------------------------------
+# Subworkflow: run_job
+# Uruchamia Cloud Run Job i blokuje aż do zakończenia (polling LRO v2).
+# Retry z backoffem na wywołaniach HTTP (§12).
+# ---------------------------------------------------------------------------
+run_job:
+  params: [project_id, region, job]
+  steps:
+    - log_start:
+        call: sys.log
+        args:
+          text: ${"[event_path] starting job: " + job}
+          severity: INFO
+
+    - start_execution:
+        try:
+          call: http.post
+          args:
+            url: ${"https://run.googleapis.com/v2/projects/" + project_id
+                   + "/locations/" + region + "/jobs/" + job + ":run"}
+            auth:
+              type: OAuth2
+          result: response
+        retry:
+          predicate: ${http.default_retry_predicate}
+          max_retries: 3
+          backoff:
+            initial_delay: 10
+            max_delay: 120
+            multiplier: 2
+
+    - save_op:
+        assign:
+          - op_name: ${response.body.name}
+
+    # Polling loop — sprawdzamy co 30 s aż do zakończenia operacji
+    - wait:
+        call: sys.sleep
+        args:
+          seconds: 30
+
+    - poll_operation:
+        try:
+          call: http.get
+          args:
+            url: ${"https://run.googleapis.com/v2/" + op_name}
+            auth:
+              type: OAuth2
+          result: op
+        retry:
+          predicate: ${http.default_retry_predicate}
+          max_retries: 5
+          backoff:
+            initial_delay: 10
+            max_delay: 60
+            multiplier: 2
+
+    - check_done:
+        switch:
+          - condition: ${op.body.done == true}
+            next: check_error
+        next: wait   # operacja nadal trwa — czekaj dalej
+
+    - check_error:
+        switch:
+          - condition: ${"error" in op.body}
+            raise: ${op.body.error}
+
+    - log_done:
+        call: sys.log
+        args:
+          text: ${"[event_path] completed job: " + job}
+          severity: INFO
+
+    - done:
+        return: ${op.body}

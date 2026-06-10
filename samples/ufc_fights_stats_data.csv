@@ -1,0 +1,6 @@
+fighter_url,fight_url,knockdowns,sig_strikes_succ,sig_strikes_att,total_strikes_succ,total_strikes_att,takedown_succ,takedown_att,submission_att,reversals,ctrl_time_sec
+http://ufcstats.com/fighter-details/0d7b51c9d2649a6e,http://ufcstats.com/fight-details/12cedec11b37ddc0,0,13,29,45,68,1,1,1,0,53
+http://ufcstats.com/fighter-details/767755fd74662dbf,http://ufcstats.com/fight-details/12cedec11b37ddc0,0,37,47,529,567,12,17,0,0,1300
+http://ufcstats.com/fighter-details/396fe87b84ac2e1c,http://ufcstats.com/fight-details/9fa6a029f7f8241c,1,8,16,8,16,0,0,1,0,0
+http://ufcstats.com/fighter-details/5537efc6e496dd84,http://ufcstats.com/fight-details/9fa6a029f7f8241c,0,13,29,13,30,2,3,0,0,121
+http://ufcstats.com/fighter-details/b997be68943010fc,http://ufcstats.com/fight-details/42585ce706c086de,0,25,49,26,50,0,1,0,0,15
