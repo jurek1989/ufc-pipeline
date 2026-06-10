@@ -1,4 +1,3 @@
-import sys
 import logging
 import bs4
 import pandas as pd
@@ -22,6 +21,26 @@ def get_new_fight_urls():
     return [row.fight_url for row in client.query(query).result()]
 
 
+def _to_int(val: str) -> int | None:
+    v = val.strip()
+    try:
+        return int(v)
+    except (ValueError, AttributeError):
+        return None
+
+
+def _ctrl_to_sec(text: str) -> int | None:
+    """Convert 'M:SS' control-time string to total seconds."""
+    text = (text or "").strip()
+    if not text or text == '--':
+        return None
+    try:
+        m, s = text.split(':')
+        return int(m) * 60 + int(s)
+    except (ValueError, AttributeError):
+        return None
+
+
 def get_fighter_id(fight_soup, fight_stats, fighter):
     idx = 0 if fighter == 1 else 1
     try:
@@ -34,28 +53,28 @@ def get_striking_stats(fight_stats, fighter):
     idx = 0 if fighter == 1 else 1
     try:
         return (
-            fight_stats[2 + idx].text.strip(),
-            fight_stats[8 + idx].text.split(' of ')[1].strip(),
-            fight_stats[8 + idx].text.split(' of ')[0].strip(),
-            fight_stats[4 + idx].text.split(' of ')[1].strip(),
-            fight_stats[4 + idx].text.split(' of ')[0].strip(),
+            _to_int(fight_stats[2 + idx].text),
+            _to_int(fight_stats[8 + idx].text.split(' of ')[1]),
+            _to_int(fight_stats[8 + idx].text.split(' of ')[0]),
+            _to_int(fight_stats[4 + idx].text.split(' of ')[1]),
+            _to_int(fight_stats[4 + idx].text.split(' of ')[0]),
         )
     except Exception:
-        return ('NULL', 'NULL', 'NULL', 'NULL', 'NULL')
+        return (None, None, None, None, None)
 
 
 def get_grappling_stats(fight_stats, fighter):
     idx = 0 if fighter == 1 else 1
     try:
         return (
-            fight_stats[10 + idx].text.split(' of ')[1].strip(),
-            fight_stats[10 + idx].text.split(' of ')[0].strip(),
-            fight_stats[14 + idx].text.strip(),
-            fight_stats[16 + idx].text.strip(),
-            fight_stats[18 + idx].text.strip(),
+            _to_int(fight_stats[10 + idx].text.split(' of ')[1]),
+            _to_int(fight_stats[10 + idx].text.split(' of ')[0]),
+            _to_int(fight_stats[14 + idx].text),
+            _to_int(fight_stats[16 + idx].text),
+            _ctrl_to_sec(fight_stats[18 + idx].text),
         )
     except Exception:
-        return ('NULL', 'NULL', 'NULL', 'NULL', 'NULL')
+        return (None, None, None, None, None)
 
 
 def main():
@@ -76,7 +95,7 @@ def main():
         for fighter_num in (1, 2):
             fighter_name = get_fighter_id(fight_soup, fight_stats, fighter_num)
             kd, ts_att, ts_succ, ss_att, ss_succ = get_striking_stats(fight_stats, fighter_num)
-            td_att, td_succ, sub_att, reversals, ctrl = get_grappling_stats(fight_stats, fighter_num)
+            td_att, td_succ, sub_att, reversals, ctrl_sec = get_grappling_stats(fight_stats, fighter_num)
             fights_stats_data.append({
                 "fighter_id": fighter_name,
                 "knockdowns": kd,
@@ -88,7 +107,7 @@ def main():
                 "takedown_succ": td_succ,
                 "submission_att": sub_att,
                 "reversals": reversals,
-                "ctrl_time": ctrl,
+                "ctrl_time_sec": ctrl_sec,
                 "fight_url": url,
             })
 

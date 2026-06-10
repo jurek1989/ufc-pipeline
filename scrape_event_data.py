@@ -34,7 +34,7 @@ def main():
             details_box = soup.find("div", class_="b-list__info-box")
 
             event_date = None
-            location_city = location_state = location_country = None
+            event_city = event_state = event_country = None
 
             if details_box:
                 for li in details_box.find_all("li"):
@@ -48,9 +48,9 @@ def main():
                         try:
                             location_text = li.text.split("Location:")[1].strip()
                             parts = [p.strip() for p in location_text.split(",")]
-                            location_city = parts[0] if len(parts) > 0 else None
-                            location_state = parts[1] if len(parts) > 1 else None
-                            location_country = parts[2] if len(parts) > 2 else None
+                            event_city = parts[0] if len(parts) > 0 else None
+                            event_state = parts[1] if len(parts) > 1 else None
+                            event_country = parts[2] if len(parts) > 2 else None
                         except Exception:
                             pass
 
@@ -58,9 +58,9 @@ def main():
                 "event_url": url,
                 "event_name": event_name,
                 "event_date": event_date.isoformat() if event_date else None,
-                "location_city": location_city,
-                "location_state": location_state,
-                "location_country": location_country,
+                "event_city": event_city,
+                "event_state": event_state,
+                "event_country": event_country,
             })
         except Exception as e:
             logging.warning(f"Błąd przy {url}: {e}")
