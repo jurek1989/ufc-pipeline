@@ -47,7 +47,7 @@ create_or_update odds-watcher \
   "${BASE[@]}" \
   --command python \
   --args "scrape_bfo_odds_watcher.py" \
-  --set-env-vars "GCP_PROJECT_ID=${PROJECT},GMAIL_USER=placeholder,GMAIL_APP_PASSWORD=placeholder"
+  --set-secrets "GMAIL_USER=GMAIL_USER:latest,GMAIL_APP_PASSWORD=GMAIL_APP_PASSWORD:latest"
 
 # build-features: extra CLI arg --mode historical
 create_or_update build-features \
