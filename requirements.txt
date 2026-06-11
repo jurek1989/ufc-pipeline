@@ -31,3 +31,7 @@ langgraph>=1.2.0                # StateGraph, conditional edges, state accumulat
 langchain-anthropic>=1.4.0      # ChatAnthropic wrapper for Claude
 langchain-community>=0.4.0      # TavilySearchResults, DuckDuckGoSearchAPIWrapper
 tavily-python>=0.5.0            # Tavily web search client (1 000 free calls/month)
+
+# Dependency pins (prevent pip backtracking to incompatible versions):
+httpx>=0.27.0                   # tavily-python old versions pull httpx<0.25 → httpcore conflict
+httpcore>=1.0.0                 # required by httpx>=0.27
