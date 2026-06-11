@@ -33,6 +33,8 @@ TABLE_MODEL_PREDICTION_INPUT = "UFC_model_prediction_input"
 KAGGLE_DATASET_SLUG = "jerzyszocik/ufc-fight-forecast-complete-gold-modeling-dataset"
 
 # Secrets — environment only, never hardcoded
-ODDS_API_KEY   = os.environ.get("ODDS_API_KEY", "")
-KAGGLE_USERNAME = os.environ.get("KAGGLE_USERNAME", "")
-KAGGLE_KEY      = os.environ.get("KAGGLE_KEY", "")
+ODDS_API_KEY       = os.environ.get("ODDS_API_KEY", "")
+KAGGLE_USERNAME    = os.environ.get("KAGGLE_USERNAME", "")
+KAGGLE_KEY         = os.environ.get("KAGGLE_KEY", "")
+GMAIL_USER         = os.environ.get("GMAIL_USER", "")
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")

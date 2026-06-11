@@ -43,7 +43,11 @@ create_or_update scrape-fighter-data   "${BASE[@]}" --command python --args scra
 create_or_update scrape-upcoming-event "${BASE[@]}" --command python --args scrape_upcoming_event.py
 create_or_update scrape-rankings       "${BASE[@]}" --command python --args scrape_rankings.py
 create_or_update scrape-odds           "${BASE[@]}" --command python --args scrape_bfo_odds.py
-create_or_update odds-watcher          "${BASE[@]}" --command python --args scrape_bfo_odds_watcher.py
+create_or_update odds-watcher \
+  "${BASE[@]}" \
+  --command python \
+  --args "scrape_bfo_odds_watcher.py" \
+  --set-env-vars "GCP_PROJECT_ID=${PROJECT},GMAIL_USER=placeholder,GMAIL_APP_PASSWORD=placeholder"
 
 # build-features: extra CLI arg --mode historical
 create_or_update build-features \
