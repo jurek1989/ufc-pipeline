@@ -23,7 +23,7 @@ main:
     - init:
         assign:
           - project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
-          - region: "europe-west4"
+          - region: "europe-central2"
 
     - parallel_background:
         parallel:
@@ -67,15 +67,14 @@ run_job:
     - log_start:
         call: sys.log
         args:
-          text: ${"[background_path] starting job: " + job}
+          text: '${"[background_path] starting job: " + job}'
           severity: INFO
 
     - start_execution:
         try:
           call: http.post
           args:
-            url: ${"https://run.googleapis.com/v2/projects/" + project_id
-                   + "/locations/" + region + "/jobs/" + job + ":run"}
+            url: '${"https://run.googleapis.com/v2/projects/" + project_id + "/locations/" + region + "/jobs/" + job + ":run"}'
             auth:
               type: OAuth2
           result: response
@@ -101,7 +100,7 @@ run_job:
         try:
           call: http.get
           args:
-            url: ${"https://run.googleapis.com/v2/" + op_name}
+            url: '${"https://run.googleapis.com/v2/" + op_name}'
             auth:
               type: OAuth2
           result: op
@@ -127,7 +126,7 @@ run_job:
     - log_done:
         call: sys.log
         args:
-          text: ${"[background_path] completed job: " + job}
+          text: '${"[background_path] completed job: " + job}'
           severity: INFO
 
     - done:

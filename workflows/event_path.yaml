@@ -31,7 +31,7 @@ main:
     - init:
         assign:
           - project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
-          - region: "europe-west4"
+          - region: "europe-central2"
 
     # -----------------------------------------------------------------------
     # Faza 1: trzy równoległe gałęzie
@@ -91,13 +91,13 @@ main:
                         project_id: ${project_id}
                         region: ${region}
                         job: "scrape-upcoming-event"
-                  # JIT: scrape tylko zawodników z karty, których brak w UFC_fighters_data
+                  # JIT: scrape-fighter-data already filters to fighters absent from UFC_fighters_data
                   - run_jit_fighter_check:
                       call: run_job
                       args:
                         project_id: ${project_id}
                         region: ${region}
-                        job: "jit-fighter-check"
+                        job: "scrape-fighter-data"
 
             # --- Gałąź B: kursy (niezależne od obu powyższych) --------------
             - branch_b_odds:
@@ -138,15 +138,14 @@ run_job:
     - log_start:
         call: sys.log
         args:
-          text: ${"[event_path] starting job: " + job}
+          text: '${"[event_path] starting job: " + job}'
           severity: INFO
 
     - start_execution:
         try:
           call: http.post
           args:
-            url: ${"https://run.googleapis.com/v2/projects/" + project_id
-                   + "/locations/" + region + "/jobs/" + job + ":run"}
+            url: '${"https://run.googleapis.com/v2/projects/" + project_id + "/locations/" + region + "/jobs/" + job + ":run"}'
             auth:
               type: OAuth2
           result: response
@@ -172,7 +171,7 @@ run_job:
         try:
           call: http.get
           args:
-            url: ${"https://run.googleapis.com/v2/" + op_name}
+            url: '${"https://run.googleapis.com/v2/" + op_name}'
             auth:
               type: OAuth2
           result: op
@@ -198,7 +197,7 @@ run_job:
     - log_done:
         call: sys.log
         args:
-          text: ${"[event_path] completed job: " + job}
+          text: '${"[event_path] completed job: " + job}'
           severity: INFO
 
     - done:
